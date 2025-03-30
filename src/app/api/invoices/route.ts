@@ -32,24 +32,66 @@ export const mockInvoices = [
 ]
 
 export async function GET() {
-  // TODO: 从数据库获取发票数据
-  return NextResponse.json(mockInvoices)
+  try {
+    return NextResponse.json(mockInvoices)
+  } catch (error) {
+    console.error('Error fetching invoices:', error)
+    return NextResponse.json(
+      { error: '获取发票列表失败' },
+      { status: 500 }
+    )
+  }
 }
 
 export async function POST(request: Request) {
   try {
-    const invoiceData = await request.json();
+    const invoiceData = await request.json()
     
-    // TODO: 将数据保存到数据库
-    // 这里我们只是将新发票添加到模拟数据中
-    mockInvoices.push(invoiceData);
+    // 验证必要字段
+    const requiredFields = ['invoiceNumber', 'type', 'date', 'amount', 'vendor']
+    const missingFields = requiredFields.filter(field => !invoiceData[field])
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `缺少必要字段: ${missingFields.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    // 验证数据类型
+    if (typeof invoiceData.amount !== 'number') {
+      return NextResponse.json(
+        { error: '金额必须是数字类型' },
+        { status: 400 }
+      )
+    }
+
+    // 检查发票号是否已存在
+    const existingInvoice = mockInvoices.find(
+      inv => inv.invoiceNumber === invoiceData.invoiceNumber
+    )
+    if (existingInvoice) {
+      return NextResponse.json(
+        { error: '发票号已存在' },
+        { status: 400 }
+      )
+    }
+
+    // 创建新发票
+    const newInvoice = {
+      ...invoiceData,
+      id: Date.now().toString(),
+      status: 'pending',
+    }
+
+    // 添加到模拟数据中
+    mockInvoices.push(newInvoice)
     
-    return NextResponse.json(invoiceData, { status: 201 });
+    return NextResponse.json(newInvoice, { status: 201 })
   } catch (error) {
-    console.error('Error saving invoice:', error);
+    console.error('Error saving invoice:', error)
     return NextResponse.json(
-      { error: 'Failed to save invoice' },
+      { error: '保存发票失败' },
       { status: 500 }
-    );
+    )
   }
 } 
